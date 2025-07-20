@@ -1,0 +1,33 @@
+[package]
+name = "egui_collapsible_dock"
+version = "0.1.0"
+edition = "2021"
+description = "A collapsible dock panel system for egui with smooth animations and state persistence"
+license = "MIT OR Apache-2.0"
+keywords = ["egui", "gui", "dock", "panel", "collapsible"]
+categories = ["gui"]
+
+[lib]
+name = "egui_collapsible_dock"
+path = "src/lib.rs"
+
+[dependencies]
+egui = "0.32.0"
+egui_dock = "0.17.0"
+egui-phosphor = "0.10.0"
+serde = { version = "1.0", features = ["derive"] }
+
+# Dependencies for examples
+eframe = "0.32.0"
+re_ui = "0.24.0"
+
+[features]
+default = []
+
+[[example]]
+name = "demo"
+path = "examples/demo.rs"
+
+[[example]]
+name = "demo_tabs"
+path = "examples/demo_tabs.rs"
