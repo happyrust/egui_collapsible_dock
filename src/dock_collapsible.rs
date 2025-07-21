@@ -33,7 +33,7 @@ impl Default for PanelState {
         Self {
             collapsed: false,
             size: 250.0,
-            min_size: 150.0,
+            min_size: 150.0, // 恢复原来的最小尺寸
             max_size: None,
             resizable: true,
         }
@@ -82,10 +82,7 @@ impl CollapsibleDockState {
 
     /// 获取面板是否折叠
     pub fn is_panel_collapsed(&self, side: PanelSide) -> bool {
-        self.panels
-            .get(&side)
-            .map(|p| p.collapsed)
-            .unwrap_or(false)
+        self.panels.get(&side).map(|p| p.collapsed).unwrap_or(false)
     }
 
     /// 切换面板折叠状态
@@ -98,26 +95,28 @@ impl CollapsibleDockState {
     /// 设置面板尺寸
     pub fn set_panel_size(&mut self, side: PanelSide, size: f32) {
         if let Some(panel) = self.panels.get_mut(&side) {
-            panel.size = size.max(panel.min_size);
+            let old_size = panel.size;
+            // 不受min_size限制，直接保存用户调整的实际宽度
+            panel.size = size;
             if let Some(max_size) = panel.max_size {
                 panel.size = panel.size.min(max_size);
             }
+        } else {
+            println!("set_panel_size: panel not found for side={:?}", side);
         }
     }
 
     /// 获取面板尺寸
     pub fn get_panel_size(&self, side: PanelSide) -> f32 {
-        self.panels
-            .get(&side)
-            .map(|p| p.size)
-            .unwrap_or(250.0)
+        self.panels.get(&side).map(|p| p.size).unwrap_or(PanelState::default().size)
     }
 
     /// 保存状态到 egui 内存
     pub fn save_to_memory(&self, ctx: &Context, id: Id) {
         if self.persist_state {
             ctx.memory_mut(|mem| {
-                mem.data.insert_persisted(id.with("dock_state"), self.clone());
+                mem.data
+                    .insert_persisted(id.with("dock_state"), self.clone());
             });
         }
     }
@@ -260,7 +259,8 @@ impl<Tab: TabViewer> CollapsibleDockPanel<Tab> {
 
     /// 设置折叠状态
     pub fn set_collapsed(&mut self, collapsed: bool) {
-        self.collapsible_state.set_panel_collapsed(self.side, collapsed);
+        self.collapsible_state
+            .set_panel_collapsed(self.side, collapsed);
     }
 
     /// 获取面板尺寸
@@ -274,91 +274,165 @@ impl<Tab: TabViewer> CollapsibleDockPanel<Tab> {
     }
 
     /// 显示可折叠面板
-    pub fn show(
-        &mut self,
-        ctx: &Context,
-        tab_viewer: &mut Tab,
-    ) -> Option<Response> {
-        // 只在第一次调用时从内存加载状态，之后不再重新加载
+    pub fn show(&mut self, ctx: &Context, tab_viewer: &mut Tab) -> Option<Response> {
+        // 只在第一次调用时从内存加载状态
         if !self.state_loaded {
             let loaded_state = CollapsibleDockState::load_from_memory(ctx, self.state_id);
-            // 只更新折叠状态，不覆盖已经调整的宽度
             if let Some(panel_state) = loaded_state.panels.get(&self.side) {
                 if let Some(our_panel_state) = self.collapsible_state.panels.get_mut(&self.side) {
                     our_panel_state.collapsed = panel_state.collapsed;
-                    // 只有当存储的宽度与默认值不同时才更新
-                    if panel_state.size != 250.0 {
-                        our_panel_state.size = panel_state.size;
-                    }
+                    our_panel_state.size = panel_state.size;
                 }
             }
             self.previous_collapsed = self.is_collapsed();
             self.state_loaded = true;
-            // println!("Debug: Initial load - size: {}, collapsed: {}", self.get_size(), self.is_collapsed());
         }
-        
+
         let is_collapsed = self.is_collapsed();
-        
-        // 检测折叠状态变化并在变化时管理egui状态
-        if self.previous_collapsed != is_collapsed {
-            #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
-            struct SidePanelState {
-                offset: f32,
-            }
-            
-            if !self.previous_collapsed && is_collapsed {
-                // 折叠前：从 egui 读取实际宽度并保存
-                // println!("=== Panel COLLAPSING ====");
-                let actual_egui_width = ctx.memory_mut(|mem| {
-                    mem.data.get_persisted::<SidePanelState>(self.state_id)
-                        .map(|s| s.offset)
-                        .unwrap_or(self.get_size())
-                });
-                // println!("Side: {:?}, Saving egui width: {} before collapse", self.side, actual_egui_width);
-                self.collapsible_state.set_panel_size(self.side, actual_egui_width);
-                
-            } else if self.previous_collapsed && !is_collapsed {
-                // 展开时：恢复保存的宽度到 egui 状态
-                // println!("=== Panel EXPANDING ====");
-                let saved_width = self.get_size();
-                // println!("Side: {:?}, Restoring width: {} to egui state", self.side, saved_width);
-                ctx.memory_mut(|mem| {
-                    let state = SidePanelState {
-                        offset: saved_width,
-                    };
-                    mem.data.insert_persisted(self.state_id, state);
-                });
-            }
-            self.previous_collapsed = is_collapsed;
-        }
-        
+        self.previous_collapsed = is_collapsed;
+
         // 如果完全折叠且没有按钮，就不显示面板
         if is_collapsed && self.buttons.is_empty() {
             return None;
         }
-        
+
         // 创建面板
         let panel_response = match self.side {
+            PanelSide::Left => self.show_left_panel(ctx, tab_viewer, is_collapsed),
+            PanelSide::Right => self.show_right_panel(ctx, tab_viewer, is_collapsed),
+            PanelSide::Top => self.show_top_panel(ctx, tab_viewer, is_collapsed),
+            PanelSide::Bottom => self.show_bottom_panel(ctx, tab_viewer, is_collapsed),
+        };
+
+        // 保存状态
+        self.collapsible_state.save_to_memory(ctx, self.state_id);
+
+        panel_response
+    }
+
+    /// 统一的面板渲染方法
+    fn show_panel_unified(
+        &mut self,
+        ctx: &Context,
+        tab_viewer: &mut Tab,
+        is_collapsed: bool,
+    ) -> Option<Response> {
+        let side_name = match self.side {
+            PanelSide::Left => "left",
+            PanelSide::Right => "right",
+            PanelSide::Top => "top",
+            PanelSide::Bottom => "bottom",
+        };
+
+        let animation_value = ctx.animate_bool(
+            self.state_id.with(format!("{}_animation", side_name)),
+            !is_collapsed
+        );
+
+        let saved_size = self.get_size();
+        let collapsed_size = 40.0;
+        let panel_state = &self.collapsible_state.panels[&self.side];
+
+        // 🔧 关键修复：为展开和折叠状态使用不同的面板ID，避免状态冲突
+        let egui_panel_id = if is_collapsed {
+            self.state_id.with(format!("{}_collapsed", side_name))
+        } else {
+            self.state_id.with(format!("{}_expanded", side_name))
+        };
+
+        let frame = self.frame.unwrap_or_else(|| {
+            let mut frame = Frame::side_top_panel(ctx.style().as_ref());
+            frame.stroke = egui::Stroke::NONE;
+            frame.inner_margin = egui::Margin::ZERO;
+            frame.outer_margin = egui::Margin::ZERO;
+            frame
+        });
+
+        let panel_response = match self.side {
             PanelSide::Left => {
-                self.show_left_panel(ctx, tab_viewer, is_collapsed)
+                egui::SidePanel::left(egui_panel_id)
+                    .frame(frame)
+                    .show_separator_line(true)
+                    .min_width(if is_collapsed { collapsed_size } else { panel_state.min_size })
+                    .max_width(if is_collapsed { collapsed_size } else { f32::INFINITY })
+                    .default_width(if is_collapsed { collapsed_size } else { saved_size })
+                    .resizable(!is_collapsed && panel_state.resizable)
+                    .show(ctx, |ui| {
+                        if is_collapsed {
+                            self.show_collapsed_content(ui, animation_value);
+                        } else {
+                            self.show_expanded_content(ui, tab_viewer);
+                        }
+                    })
             }
             PanelSide::Right => {
-                self.show_right_panel(ctx, tab_viewer, is_collapsed)
+                egui::SidePanel::right(egui_panel_id)
+                    .frame(frame)
+                    .show_separator_line(false)
+                    .min_width(if is_collapsed { collapsed_size } else { panel_state.min_size })
+                    .max_width(if is_collapsed { collapsed_size } else { f32::INFINITY })
+                    .default_width(if is_collapsed { collapsed_size } else { saved_size })
+                    .resizable(!is_collapsed && panel_state.resizable)
+                    .show(ctx, |ui| {
+                        if is_collapsed {
+                            self.show_collapsed_content(ui, animation_value);
+                        } else {
+                            self.show_expanded_content(ui, tab_viewer);
+                        }
+                    })
             }
             PanelSide::Top => {
-                self.show_top_panel(ctx, tab_viewer, is_collapsed)
+                egui::TopBottomPanel::top(egui_panel_id)
+                    .frame(frame)
+                    .show_separator_line(false)
+                    .min_height(if is_collapsed { collapsed_size } else { panel_state.min_size })
+                    .max_height(if is_collapsed {
+                        collapsed_size
+                    } else {
+                        panel_state.max_size.unwrap_or(f32::INFINITY)
+                    })
+                    .default_height(if is_collapsed { collapsed_size } else { saved_size })
+                    .resizable(!is_collapsed && panel_state.resizable)
+                    .show(ctx, |ui| {
+                        if is_collapsed {
+                            self.show_collapsed_content(ui, animation_value);
+                        } else {
+                            self.show_expanded_content(ui, tab_viewer);
+                        }
+                    })
             }
             PanelSide::Bottom => {
-                self.show_bottom_panel(ctx, tab_viewer, is_collapsed)
+                egui::TopBottomPanel::bottom(egui_panel_id)
+                    .frame(frame)
+                    .show_separator_line(false)
+                    .min_height(if is_collapsed { collapsed_size } else { panel_state.min_size })
+                    .max_height(if is_collapsed {
+                        collapsed_size
+                    } else {
+                        panel_state.max_size.unwrap_or(f32::INFINITY)
+                    })
+                    .default_height(if is_collapsed { collapsed_size } else { saved_size })
+                    .resizable(!is_collapsed && panel_state.resizable)
+                    .show(ctx, |ui| {
+                        if is_collapsed {
+                            self.show_collapsed_content(ui, animation_value);
+                        } else {
+                            self.show_expanded_content(ui, tab_viewer);
+                        }
+                    })
             }
         };
 
-        // 保存状态到内存（只在状态变化时）
-        if self.previous_collapsed != is_collapsed || !self.state_loaded {
-            self.collapsible_state.save_to_memory(ctx, self.state_id);
+        // 保存用户调整的尺寸
+        if !is_collapsed {
+            let actual_size = match self.side {
+                PanelSide::Left | PanelSide::Right => panel_response.response.rect.width(),
+                PanelSide::Top | PanelSide::Bottom => panel_response.response.rect.height(),
+            };
+            self.collapsible_state.set_panel_size(self.side, actual_size);
         }
 
-        panel_response
+        Some(panel_response.response)
     }
 
     /// 显示左侧面板
@@ -368,61 +442,7 @@ impl<Tab: TabViewer> CollapsibleDockPanel<Tab> {
         tab_viewer: &mut Tab,
         is_collapsed: bool,
     ) -> Option<Response> {
-        let animation_value = ctx.animate_bool(
-            self.state_id.with("left_animation"),
-            !is_collapsed,
-        );
-
-        // 使用动画值来平滑过渡宽度
-        let saved_width = self.get_size();
-        let panel_width = 40.0 + animation_value * (saved_width - 40.0);
-
-        // 使用我们的实际state_id作为基础，egui会自动添加内部后缀
-        let panel_id = self.state_id;
-        
-        // 简化方法：在展开时强制设置较大的最小宽度来"推动"面板使用正确的宽度
-        let effective_min_width = if !is_collapsed && self.previous_collapsed {
-            // 展开时：使用保存的宽度作为最小宽度，强制面板至少这么宽
-            // println!("[LEFT] Expanding: forcing min_width to saved width: {}", saved_width);
-            saved_width
-        } else if !is_collapsed {
-            self.collapsible_state.panels[&self.side].min_size
-        } else {
-            40.0
-        };
-        
-        let panel_response = egui::SidePanel::left(panel_id)
-            .frame(self.frame.unwrap_or_else(|| {
-                let mut frame = Frame::side_top_panel(ctx.style().as_ref());
-                frame.stroke = egui::Stroke::NONE;
-                frame.inner_margin = egui::Margin::ZERO;
-                frame.outer_margin = egui::Margin::ZERO;
-                frame
-            }))
-            .show_separator_line(false)
-            .min_width(effective_min_width)
-            .max_width(if is_collapsed { panel_width } else { 1000.0 })
-            .default_width(if is_collapsed { panel_width } else { saved_width })
-            .resizable(!is_collapsed && self.collapsible_state.panels[&self.side].resizable)
-            .show(ctx, |ui| {
-                if is_collapsed {
-                    self.show_collapsed_content(ui, animation_value);
-                } else {
-                    self.show_expanded_content(ui, tab_viewer);
-                }
-            });
-            
-        // 实时保存用户调整的宽度到我们的状态中
-        if !is_collapsed && animation_value > 0.99 {
-            let actual_width = panel_response.response.rect.width();
-            let saved_width = self.get_size();
-            // 只有当宽度显著变化时才保存
-            if (actual_width - saved_width).abs() > 5.0 {
-                self.collapsible_state.set_panel_size(self.side, actual_width);
-            }
-        }
-        
-        Some(panel_response.response)
+        self.show_panel_unified(ctx, tab_viewer, is_collapsed)
     }
 
     /// 显示右侧面板
@@ -432,61 +452,7 @@ impl<Tab: TabViewer> CollapsibleDockPanel<Tab> {
         tab_viewer: &mut Tab,
         is_collapsed: bool,
     ) -> Option<Response> {
-        let animation_value = ctx.animate_bool(
-            self.state_id.with("right_animation"),
-            !is_collapsed,
-        );
-
-        // 使用动画值来平滑过渡宽度
-        let saved_width = self.get_size();
-        let panel_width = 40.0 + animation_value * (saved_width - 40.0);
-
-        // 使用我们的实际state_id作为基础，egui会自动添加内部后缀
-        let panel_id = self.state_id;
-        
-        // 简化方法：在展开时强制设置较大的最小宽度来"推动"面板使用正确的宽度
-        let effective_min_width = if !is_collapsed && self.previous_collapsed {
-            // 展开时：使用保存的宽度作为最小宽度，强制面板至少这么宽
-            // println!("[RIGHT] Expanding: forcing min_width to saved width: {}", saved_width);
-            saved_width
-        } else if !is_collapsed {
-            self.collapsible_state.panels[&self.side].min_size
-        } else {
-            40.0
-        };
-        
-        let panel_response = egui::SidePanel::right(panel_id)
-            .frame(self.frame.unwrap_or_else(|| {
-                let mut frame = Frame::side_top_panel(ctx.style().as_ref());
-                frame.stroke = egui::Stroke::NONE;
-                frame.inner_margin = egui::Margin::ZERO;
-                frame.outer_margin = egui::Margin::ZERO;
-                frame
-            }))
-            .show_separator_line(false)
-            .min_width(effective_min_width)
-            .max_width(if is_collapsed { panel_width } else { 1000.0 })
-            .default_width(if is_collapsed { panel_width } else { saved_width })
-            .resizable(!is_collapsed && self.collapsible_state.panels[&self.side].resizable)
-            .show(ctx, |ui| {
-                if is_collapsed {
-                    self.show_collapsed_content(ui, animation_value);
-                } else {
-                    self.show_expanded_content(ui, tab_viewer);
-                }
-            });
-            
-        // 实时保存用户调整的宽度到我们的状态中
-        if !is_collapsed && animation_value > 0.99 {
-            let actual_width = panel_response.response.rect.width();
-            let saved_width = self.get_size();
-            // 只有当宽度显著变化时才保存
-            if (actual_width - saved_width).abs() > 5.0 {
-                self.collapsible_state.set_panel_size(self.side, actual_width);
-            }
-        }
-        
-        Some(panel_response.response)
+        self.show_panel_unified(ctx, tab_viewer, is_collapsed)
     }
 
     /// 显示顶部面板
@@ -496,38 +462,7 @@ impl<Tab: TabViewer> CollapsibleDockPanel<Tab> {
         tab_viewer: &mut Tab,
         is_collapsed: bool,
     ) -> Option<Response> {
-        let animation_value = ctx.animate_bool(
-            self.state_id.with("top_animation"),
-            !is_collapsed,
-        );
-
-        let panel_height = if is_collapsed {
-            40.0 + animation_value * (self.get_size() - 40.0)
-        } else {
-            self.get_size()
-        };
-
-        Some(egui::TopBottomPanel::top(self.state_id)
-            .frame(self.frame.unwrap_or_else(|| {
-                let mut frame = Frame::side_top_panel(ctx.style().as_ref());
-                frame.stroke = egui::Stroke::NONE;
-                frame.inner_margin = egui::Margin::ZERO; // 调试：确保没有内边距
-                frame.outer_margin = egui::Margin::ZERO; // 调试：确保没有外边距
-                frame
-            }))
-            .show_separator_line(false) // 隐藏分隔符线
-            .min_height(if is_collapsed { 40.0 } else { self.collapsible_state.panels[&self.side].min_size })
-            .max_height(panel_height)
-            .default_height(panel_height)
-            .resizable(!is_collapsed && self.collapsible_state.panels[&self.side].resizable)
-            .show(ctx, |ui| {
-                if is_collapsed {
-                    self.show_collapsed_content(ui, animation_value);
-                } else {
-                    self.show_expanded_content(ui, tab_viewer);
-                }
-            })
-            .response)
+        self.show_panel_unified(ctx, tab_viewer, is_collapsed)
     }
 
     /// 显示底部面板
@@ -537,38 +472,7 @@ impl<Tab: TabViewer> CollapsibleDockPanel<Tab> {
         tab_viewer: &mut Tab,
         is_collapsed: bool,
     ) -> Option<Response> {
-        let animation_value = ctx.animate_bool(
-            self.state_id.with("bottom_animation"),
-            !is_collapsed,
-        );
-
-        let panel_height = if is_collapsed {
-            40.0 + animation_value * (self.get_size() - 40.0)
-        } else {
-            self.get_size()
-        };
-
-        Some(egui::TopBottomPanel::bottom(self.state_id)
-            .frame(self.frame.unwrap_or_else(|| {
-                let mut frame = Frame::side_top_panel(ctx.style().as_ref());
-                frame.stroke = egui::Stroke::NONE;
-                frame.inner_margin = egui::Margin::ZERO; // 调试：确保没有内边距
-                frame.outer_margin = egui::Margin::ZERO; // 调试：确保没有外边距
-                frame
-            }))
-            .show_separator_line(false) // 隐藏分隔符线
-            .min_height(if is_collapsed { 40.0 } else { self.collapsible_state.panels[&self.side].min_size })
-            .max_height(panel_height)
-            .default_height(panel_height)
-            .resizable(!is_collapsed && self.collapsible_state.panels[&self.side].resizable)
-            .show(ctx, |ui| {
-                if is_collapsed {
-                    self.show_collapsed_content(ui, animation_value);
-                } else {
-                    self.show_expanded_content(ui, tab_viewer);
-                }
-            })
-            .response)
+        self.show_panel_unified(ctx, tab_viewer, is_collapsed)
     }
 
     /// 显示折叠状态下的内容
@@ -583,19 +487,28 @@ impl<Tab: TabViewer> CollapsibleDockPanel<Tab> {
                 ui.push_id((self.state_id, "collapsed_vertical"), |ui| {
                     ui.vertical_centered(|ui| {
                         ui.spacing_mut().item_spacing.y = spacing;
-                        
+
                         // 添加展开按钮
-                        if ui.small_button(phosphor::CARET_RIGHT).on_hover_text("展开面板").clicked() {
+                        if ui
+                            .small_button(phosphor::CARET_RIGHT)
+                            .on_hover_text("展开面板")
+                            .clicked()
+                        {
                             self.set_collapsed(false);
                         }
-                        
+
                         ui.add_space(4.0);
-                        
+
                         // 显示SVG图标按钮
                         let mut clicked_button = None;
                         for (i, button) in self.buttons.iter().enumerate() {
                             ui.push_id(i, |ui| {
-                                let response = self.show_collapsed_svg_button(ui, button, button_size, animation_value);
+                                let response = self.show_collapsed_svg_button(
+                                    ui,
+                                    button,
+                                    button_size,
+                                    animation_value,
+                                );
                                 if response.clicked() {
                                     clicked_button = Some(i);
                                 }
@@ -611,19 +524,28 @@ impl<Tab: TabViewer> CollapsibleDockPanel<Tab> {
                 ui.push_id((self.state_id, "collapsed_horizontal"), |ui| {
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing.x = spacing;
-                        
+
                         // 添加展开按钮
-                        if ui.small_button(phosphor::CARET_DOWN).on_hover_text("展开面板").clicked() {
+                        if ui
+                            .small_button(phosphor::CARET_DOWN)
+                            .on_hover_text("展开面板")
+                            .clicked()
+                        {
                             self.set_collapsed(false);
                         }
-                        
+
                         ui.add_space(4.0);
-                        
+
                         // 显示SVG图标按钮
                         let mut clicked_button = None;
                         for (i, button) in self.buttons.iter().enumerate() {
                             ui.push_id(i, |ui| {
-                                let response = self.show_collapsed_svg_button(ui, button, button_size, animation_value);
+                                let response = self.show_collapsed_svg_button(
+                                    ui,
+                                    button,
+                                    button_size,
+                                    animation_value,
+                                );
                                 if response.clicked() {
                                     clicked_button = Some(i);
                                 }
@@ -660,9 +582,8 @@ impl<Tab: TabViewer> CollapsibleDockPanel<Tab> {
             }
         };
 
-        let mut button_ui = egui::Button::new(button_text)
-            .min_size(size);
-        
+        let mut button_ui = egui::Button::new(button_text).min_size(size);
+
         if button.selected {
             button_ui = button_ui.selected(true);
         }
@@ -689,17 +610,16 @@ impl<Tab: TabViewer> CollapsibleDockPanel<Tab> {
     ) -> Response {
         // 使用Phosphor图标
         let icon = match button.text.as_str() {
-            "Search" => phosphor::MAGNIFYING_GLASS,  // 搜索图标
-            "Files" => phosphor::FOLDER,             // 文件夹图标
-            "Diagnostics" => phosphor::WARNING,      // 警告图标
+            "Search" => phosphor::MAGNIFYING_GLASS,         // 搜索图标
+            "Files" => phosphor::FOLDER,                    // 文件夹图标
+            "Diagnostics" => phosphor::WARNING,             // 警告图标
             "History" => phosphor::CLOCK_COUNTER_CLOCKWISE, // 历史图标
-            "Settings" => phosphor::GEAR,            // 设置图标
-            _ => phosphor::CIRCLE,                   // 默认圆点
+            "Settings" => phosphor::GEAR,                   // 设置图标
+            _ => phosphor::CIRCLE,                          // 默认圆点
         };
 
-        let mut button_ui = egui::Button::new(icon)
-            .min_size(Vec2::splat(28.0));
-        
+        let mut button_ui = egui::Button::new(icon).min_size(Vec2::splat(28.0));
+
         if button.selected {
             button_ui = button_ui.selected(true);
         }
@@ -724,7 +644,11 @@ impl<Tab: TabViewer> CollapsibleDockPanel<Tab> {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.push_id("minimize_button", |ui| {
                         // 使用Phosphor图标作为最小化按钮
-                        if ui.small_button(phosphor::MINUS).on_hover_text("最小化面板").clicked() {
+                        if ui
+                            .small_button(phosphor::MINUS)
+                            .on_hover_text("最小化面板")
+                            .clicked()
+                        {
                             self.set_collapsed(true);
                         }
                     });
@@ -737,7 +661,7 @@ impl<Tab: TabViewer> CollapsibleDockPanel<Tab> {
             egui_dock::DockArea::new(&mut self.dock_state)
                 .id(egui::Id::new((self.state_id, "dock_area_unique")))
                 .style(egui_dock::Style::from_egui(ui.ctx().style().as_ref()))
-                .show_leaf_collapse_buttons(false)  // 直接禁用 collapse 按钮
+                .show_leaf_collapse_buttons(false) // 直接禁用 collapse 按钮
                 .show_inside(ui, tab_viewer);
         });
     }

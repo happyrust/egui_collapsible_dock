@@ -446,7 +446,6 @@ impl Default for DemoTabsApp {
             egui::Id::new("collapsible_left_panel"),
         )
         .with_dock_state(left_dock)
-        .with_min_size(250.0)
         .add_button(
             CollapsibleButton::new("文件")
                 .with_icon("📁")

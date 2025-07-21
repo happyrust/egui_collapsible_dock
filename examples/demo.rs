@@ -138,7 +138,6 @@ impl Default for DemoApp {
             egui::Id::new("collapsible_left_panel"),
         )
         .with_dock_state(left_dock)
-        .with_min_size(200.0)
         .add_button(
             CollapsibleButton::new("搜索")
                 .with_icon("🔍")
@@ -158,7 +157,6 @@ impl Default for DemoApp {
             egui::Id::new("collapsible_right_panel"),
         )
         .with_dock_state(right_dock)
-        .with_min_size(250.0)
         .add_button(
             CollapsibleButton::new("诊断")
                 .with_icon("⚠️")

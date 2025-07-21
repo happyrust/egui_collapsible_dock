@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- 统一的面板渲染系统，减少代码重复
+- 动态面板 ID 机制，解决展开/折叠状态冲突
+- 改进的面板尺寸管理和持久化
+
+### Fixed
+- 修复面板展开时使用 `min_width` 而不是 `default_width` 的问题
+- 修复底部面板无法向上调整大小的问题
+- 修复 `get_panel_size` 方法的默认值不一致问题
+- 解决 egui 内部状态冲突导致的宽度限制问题
+
+### Changed
+- 重构面板渲染逻辑，将四个方向的面板统一到 `show_panel_unified` 方法
+- 更新默认面板尺寸从 50.0 到 250.0
+- 更新最小面板尺寸从 50.0 到 150.0
+- 改进面板 ID 命名策略，为不同状态使用不同 ID
+
+### Technical Details
+- 为展开和折叠状态使用不同的面板 ID (`{side}_expanded` / `{side}_collapsed`)
+- 统一所有面板的最大尺寸处理逻辑 (`max_size.unwrap_or(f32::INFINITY)`)
+- 改进面板尺寸保存机制，确保用户调整被正确持久化
+- 优化代码结构，减少约 70 行重复代码
+
 ## [0.1.0] - 2025-01-20
 
 ### Added
