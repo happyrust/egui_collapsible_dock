@@ -184,11 +184,19 @@ where
         // 根据面板方向创建相应的面板
         match self.side {
             PanelSide::Left => {
-                let collapsed_width = 35.0;
+                let collapsed_width = 16.0;  // VSCode style narrow sidebar
                 let expanded_width = self.min_size;
 
                 egui::SidePanel::left(id)
-                    .frame(self.expanded_frame.unwrap_or_else(|| Frame::side_top_panel(&egui::Style::default())))
+                    .frame(self.expanded_frame.unwrap_or_else(|| {
+                        let mut frame = Frame::side_top_panel(&egui::Style::default());
+                        // Remove all padding for VSCode-style collapsed width
+                        if !state.is_expanded {
+                            frame.inner_margin = egui::Margin::ZERO;
+                            frame.outer_margin = egui::Margin::ZERO;
+                        }
+                        frame
+                    }))
                     .min_width(collapsed_width)
                     .default_width(if state.is_expanded { expanded_width } else { collapsed_width })
                     .width_range(collapsed_width..=expanded_width * 2.0)
@@ -199,11 +207,19 @@ where
                     .map(|r| r.response)
             }
             PanelSide::Right => {
-                let collapsed_width = 35.0;
+                let collapsed_width = 16.0;  // VSCode style narrow sidebar
                 let expanded_width = self.min_size;
 
                 egui::SidePanel::right(id)
-                    .frame(self.expanded_frame.unwrap_or_else(|| Frame::side_top_panel(&egui::Style::default())))
+                    .frame(self.expanded_frame.unwrap_or_else(|| {
+                        let mut frame = Frame::side_top_panel(&egui::Style::default());
+                        // Remove all padding for VSCode-style collapsed width
+                        if !state.is_expanded {
+                            frame.inner_margin = egui::Margin::ZERO;
+                            frame.outer_margin = egui::Margin::ZERO;
+                        }
+                        frame
+                    }))
                     .min_width(collapsed_width)
                     .default_width(if state.is_expanded { expanded_width } else { collapsed_width })
                     .width_range(collapsed_width..=expanded_width * 2.0)
@@ -310,8 +326,8 @@ where
                     };
 
                     let button = egui::Button::new(short_title)
-                        .selected(is_selected)
-                        .min_size(egui::vec2(30.0, 30.0));
+                        // VSCode style: no selection state when collapsed
+                        .min_size(egui::vec2(14.0, 14.0));
 
                     if ui.add(button).on_hover_text(&title).clicked() {
                         state.selected_tab = Some(idx);
@@ -335,8 +351,8 @@ where
                     };
 
                     let button = egui::Button::new(short_title)
-                        .selected(is_selected)
-                        .min_size(egui::vec2(30.0, 30.0));
+                        // VSCode style: no selection state when collapsed
+                        .min_size(egui::vec2(14.0, 14.0));
 
                     if ui.add(button).on_hover_text(&title).clicked() {
                         state.selected_tab = Some(idx);

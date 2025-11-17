@@ -1,10 +1,9 @@
 mod demo_tabs;
 
 use demo_tabs::{DemoTab, PanelId, TabContent};
-use egui_collapsible_dock::{CollapsibleDockPanel, CollapsibleButton, PanelSide};
 use eframe::egui;
+use egui_collapsible_dock::{CollapsibleButton, CollapsibleDockPanel, PanelSide};
 use egui_dock::{DockArea, DockState, Style, TabViewer};
-
 
 fn main() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions {
@@ -37,13 +36,13 @@ fn setup_chinese_fonts(ctx: &egui::Context) {
     FONT_SETUP.call_once(|| {
         let chinese_font_paths = [
             // macOS 系统字体
-            "/System/Library/Fonts/PingFang.ttc",        // 苹方
-            "/System/Library/Fonts/STHeiti Light.ttc",   // 华文黑体
-            "/System/Library/Fonts/STSong.ttc",          // 华文宋体
+            "/System/Library/Fonts/PingFang.ttc",         // 苹方
+            "/System/Library/Fonts/STHeiti Light.ttc",    // 华文黑体
+            "/System/Library/Fonts/STSong.ttc",           // 华文宋体
             "/System/Library/Fonts/Hiragino Sans GB.ttc", // 冬青黑体
             // Windows 系统字体
-            "C:/Windows/Fonts/msyh.ttc",                 // 微软雅黑
-            "C:/Windows/Fonts/simsun.ttc",               // 宋体
+            "C:/Windows/Fonts/msyh.ttc",   // 微软雅黑
+            "C:/Windows/Fonts/simsun.ttc", // 宋体
             // Linux 系统字体
             "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc", // 文泉驿微米黑
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", // DejaVu Sans
@@ -77,8 +76,12 @@ fn setup_chinese_fonts(ctx: &egui::Context) {
             );
 
             // 重新设置字体族，优先使用中文字体
-            fonts.families.insert(FontFamily::Proportional, vec!["chinese_font".to_owned()]);
-            fonts.families.insert(FontFamily::Monospace, vec!["chinese_font".to_owned()]);
+            fonts
+                .families
+                .insert(FontFamily::Proportional, vec!["chinese_font".to_owned()]);
+            fonts
+                .families
+                .insert(FontFamily::Monospace, vec!["chinese_font".to_owned()]);
 
             // 重新设置字体配置
             ctx.set_fonts(fonts);
@@ -133,54 +136,51 @@ impl Default for DemoApp {
 
         // 创建左侧面板
         let left_dock = DockState::new(vec![DemoTab::new(PanelId::Left, TabContent::Search)]);
-        let left_panel = CollapsibleDockPanel::new(
-            PanelSide::Left,
-            egui::Id::new("collapsible_left_panel"),
-        )
-        .with_dock_state(left_dock)
-        .add_button(
-            CollapsibleButton::new("搜索")
-                .with_icon("🔍")
-                .with_tooltip("搜索文件和内容"),
-        )
-        .add_button(
-            CollapsibleButton::new("文件")
-                .with_icon("📁")
-                .with_tooltip("浏览文件"),
-        );
+        let left_panel =
+            CollapsibleDockPanel::new(PanelSide::Left, egui::Id::new("collapsible_left_panel"))
+                .with_dock_state(left_dock)
+                .add_button(
+                    CollapsibleButton::new("搜索")
+                        .with_icon("🔍")
+                        .with_tooltip("搜索文件和内容"),
+                )
+                .add_button(
+                    CollapsibleButton::new("文件")
+                        .with_icon("📁")
+                        .with_tooltip("浏览文件"),
+                );
 
         // 创建右侧面板
-        let mut right_dock = DockState::new(vec![DemoTab::new(PanelId::Right, TabContent::Diagnostics)]);
-        right_dock.main_surface_mut().push_to_focused_leaf(DemoTab::new(PanelId::Right, TabContent::History));
-        let right_panel = CollapsibleDockPanel::new(
-            PanelSide::Right,
-            egui::Id::new("collapsible_right_panel"),
-        )
-        .with_dock_state(right_dock)
-        .add_button(
-            CollapsibleButton::new("诊断")
-                .with_icon("⚠️")
-                .with_tooltip("查看诊断和错误"),
-        )
-        .add_button(
-            CollapsibleButton::new("历史")
-                .with_icon("📜")
-                .with_tooltip("查看命令历史"),
-        );
+        let mut right_dock =
+            DockState::new(vec![DemoTab::new(PanelId::Right, TabContent::Diagnostics)]);
+        right_dock
+            .main_surface_mut()
+            .push_to_focused_leaf(DemoTab::new(PanelId::Right, TabContent::History));
+        let right_panel =
+            CollapsibleDockPanel::new(PanelSide::Right, egui::Id::new("collapsible_right_panel"))
+                .with_dock_state(right_dock)
+                .add_button(
+                    CollapsibleButton::new("诊断")
+                        .with_icon("⚠️")
+                        .with_tooltip("查看诊断和错误"),
+                )
+                .add_button(
+                    CollapsibleButton::new("历史")
+                        .with_icon("📜")
+                        .with_tooltip("查看命令历史"),
+                );
 
         // 创建底部面板
         let bottom_dock = DockState::new(vec![DemoTab::new(PanelId::Bottom, TabContent::Settings)]);
-        let bottom_panel = CollapsibleDockPanel::new(
-            PanelSide::Bottom,
-            egui::Id::new("collapsible_bottom_panel"),
-        )
-        .with_dock_state(bottom_dock)
-        .with_min_size(150.0)
-        .add_button(
-            CollapsibleButton::new("设置")
-                .with_icon("⚙️")
-                .with_tooltip("应用程序设置"),
-        );
+        let bottom_panel =
+            CollapsibleDockPanel::new(PanelSide::Bottom, egui::Id::new("collapsible_bottom_panel"))
+                .with_dock_state(bottom_dock)
+                .with_min_size(150.0)
+                .add_button(
+                    CollapsibleButton::new("设置")
+                        .with_icon("⚙️")
+                        .with_tooltip("应用程序设置"),
+                );
 
         Self {
             dock_state,
@@ -204,26 +204,36 @@ impl eframe::App for DemoApp {
 
             self.style_initialized = true;
         }
-        
 
         // Top menu bar with re_ui styling applied automatically
-        egui::TopBottomPanel::top("top_panel")
-            .show(ctx, |ui| {
+        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.menu_button("📋 View", |ui| {
-                    let left_text = if self.left_panel.is_collapsed() { "▶ Expand Left Panel" } else { "◀ Collapse Left Panel" };
+                    let left_text = if self.left_panel.is_collapsed() {
+                        "▶ Expand Left Panel"
+                    } else {
+                        "◀ Collapse Left Panel"
+                    };
                     if ui.button(left_text).clicked() {
                         self.left_panel.toggle();
                         ui.close();
                     }
 
-                    let right_text = if self.right_panel.is_collapsed() { "◀ Expand Right Panel" } else { "▶ Collapse Right Panel" };
+                    let right_text = if self.right_panel.is_collapsed() {
+                        "◀ Expand Right Panel"
+                    } else {
+                        "▶ Collapse Right Panel"
+                    };
                     if ui.button(right_text).clicked() {
                         self.right_panel.toggle();
                         ui.close();
                     }
 
-                    let bottom_text = if self.bottom_panel.is_collapsed() { "▲ Expand Bottom Panel" } else { "▼ Collapse Bottom Panel" };
+                    let bottom_text = if self.bottom_panel.is_collapsed() {
+                        "▲ Expand Bottom Panel"
+                    } else {
+                        "▼ Collapse Bottom Panel"
+                    };
                     if ui.button(bottom_text).clicked() {
                         self.bottom_panel.toggle();
                         ui.close();
@@ -248,12 +258,28 @@ impl eframe::App for DemoApp {
                 ui.strong("🔧 Egui Collapsible Dock Demo");
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.colored_label(egui::Color32::from_rgb(120, 200, 120), format!("FPS: {:.1}", ctx.input(|i| 1.0 / i.stable_dt)));
+                    ui.colored_label(
+                        egui::Color32::from_rgb(120, 200, 120),
+                        format!("FPS: {:.1}", ctx.input(|i| 1.0 / i.stable_dt)),
+                    );
                     ui.separator();
-                    ui.label(format!("Panels: L:{} R:{} B:{}",
-                        if self.left_panel.is_collapsed() { "❌" } else { "✅" },
-                        if self.right_panel.is_collapsed() { "❌" } else { "✅" },
-                        if self.bottom_panel.is_collapsed() { "❌" } else { "✅" }
+                    ui.label(format!(
+                        "Panels: L:{} R:{} B:{}",
+                        if self.left_panel.is_collapsed() {
+                            "❌"
+                        } else {
+                            "✅"
+                        },
+                        if self.right_panel.is_collapsed() {
+                            "❌"
+                        } else {
+                            "✅"
+                        },
+                        if self.bottom_panel.is_collapsed() {
+                            "❌"
+                        } else {
+                            "✅"
+                        }
                     ));
                 });
             });
@@ -278,12 +304,13 @@ impl eframe::App for DemoApp {
         self.bottom_panel.show(ctx, &mut DemoTabViewer);
 
         // Central panel with re_ui styling applied automatically
-        egui::CentralPanel::default()
-            .show(ctx, |ui| {
+        egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("🔧 Egui Collapsible Dock Demo");
             ui.separator();
 
-            ui.label("This demo showcases collapsible dock panels using egui_dock with re_ui theming.");
+            ui.label(
+                "This demo showcases collapsible dock panels using egui_dock with re_ui theming.",
+            );
             ui.label("Use the View menu to toggle panels, or try these keyboard shortcuts:");
             ui.label("• F1: Toggle Left Panel");
             ui.label("• F2: Toggle Right Panel");
@@ -293,9 +320,30 @@ impl eframe::App for DemoApp {
 
             ui.group(|ui| {
                 ui.strong("Panel Status:");
-                ui.label(format!("Left Panel: {}", if self.left_panel.is_collapsed() { "Collapsed ❌" } else { "Expanded ✅" }));
-                ui.label(format!("Right Panel: {}", if self.right_panel.is_collapsed() { "Collapsed ❌" } else { "Expanded ✅" }));
-                ui.label(format!("Bottom Panel: {}", if self.bottom_panel.is_collapsed() { "Collapsed ❌" } else { "Expanded ✅" }));
+                ui.label(format!(
+                    "Left Panel: {}",
+                    if self.left_panel.is_collapsed() {
+                        "Collapsed ❌"
+                    } else {
+                        "Expanded ✅"
+                    }
+                ));
+                ui.label(format!(
+                    "Right Panel: {}",
+                    if self.right_panel.is_collapsed() {
+                        "Collapsed ❌"
+                    } else {
+                        "Expanded ✅"
+                    }
+                ));
+                ui.label(format!(
+                    "Bottom Panel: {}",
+                    if self.bottom_panel.is_collapsed() {
+                        "Collapsed ❌"
+                    } else {
+                        "Expanded ✅"
+                    }
+                ));
             });
 
             ui.add_space(20.0);
@@ -319,7 +367,7 @@ impl eframe::App for DemoApp {
                 DockArea::new(&mut self.dock_state)
                     .id(egui::Id::new("main_dock_area_unique"))
                     .style(Style::from_egui(ctx.style().as_ref()))
-                    .show_leaf_collapse_buttons(false)  // 直接禁用 collapse 按钮
+                    .show_leaf_collapse_buttons(false) // 直接禁用 collapse 按钮
                     .show_inside(ui, &mut DemoTabViewer);
             });
         });

@@ -1,8 +1,8 @@
-use egui::Ui;
-use serde::{Deserialize, Serialize};
 use eframe::egui;
-use egui_collapsible_dock::{CollapsibleDockPanel, CollapsibleButton, PanelSide};
+use egui::Ui;
+use egui_collapsible_dock::{CollapsibleButton, CollapsibleDockPanel, PanelSide};
 use egui_dock::{DockArea, DockState, Style, TabViewer};
+use serde::{Deserialize, Serialize};
 
 /// 应用设置结构体
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -116,8 +116,14 @@ pub fn show_tab_content(ui: &mut Ui, tab: &DemoTab) {
             let search_text_id = egui::Id::new(&tab.unique_id).with("search_text");
             let search_results_id = egui::Id::new(&tab.unique_id).with("search_results");
 
-            let mut search_text = ui.data_mut(|d| d.get_persisted_mut_or_default::<String>(search_text_id).clone());
-            let mut search_results = ui.data_mut(|d| d.get_persisted_mut_or_default::<Vec<String>>(search_results_id).clone());
+            let mut search_text = ui.data_mut(|d| {
+                d.get_persisted_mut_or_default::<String>(search_text_id)
+                    .clone()
+            });
+            let mut search_results = ui.data_mut(|d| {
+                d.get_persisted_mut_or_default::<Vec<String>>(search_results_id)
+                    .clone()
+            });
 
             ui.horizontal(|ui| {
                 ui.label("搜索:");
@@ -125,17 +131,26 @@ pub fn show_tab_content(ui: &mut Ui, tab: &DemoTab) {
                     let response = ui.text_edit_singleline(&mut search_text);
                     let search_clicked = ui.button("🔍").clicked();
 
-                    if search_clicked || (response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter))) {
+                    if search_clicked
+                        || (response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)))
+                    {
                         // Simulate search
                         search_results.clear();
                         if !search_text.is_empty() {
                             search_results.push(format!("📄 main.rs:15 - 找到 '{}'", search_text));
-                            search_results.push(format!("📄 collapsible_toolbar.rs:42 - 找到 '{}'", search_text));
-                            search_results.push(format!("📄 demo_tabs.rs:8 - 找到 '{}'", search_text));
-                            search_results.push(format!("📄 README.md:25 - 找到 '{}'", search_text));
+                            search_results.push(format!(
+                                "📄 collapsible_toolbar.rs:42 - 找到 '{}'",
+                                search_text
+                            ));
+                            search_results
+                                .push(format!("📄 demo_tabs.rs:8 - 找到 '{}'", search_text));
+                            search_results
+                                .push(format!("📄 README.md:25 - 找到 '{}'", search_text));
                         }
                         // Save updated search results
-                        ui.data_mut(|d| d.insert_persisted(search_results_id, search_results.clone()));
+                        ui.data_mut(|d| {
+                            d.insert_persisted(search_results_id, search_results.clone())
+                        });
                     }
                     // Save updated search text
                     ui.data_mut(|d| d.insert_persisted(search_text_id, search_text.clone()));
@@ -226,7 +241,12 @@ pub fn show_tab_content(ui: &mut Ui, tab: &DemoTab) {
                         ui.push_id(i, |ui| {
                             ui.horizontal(|ui| {
                                 ui.label(format!("{}.", i + 1));
-                                ui.label(format!("{} - 2024-07-20 {:02}:{:02}", operation, 14 + i % 8, i * 3 % 60));
+                                ui.label(format!(
+                                    "{} - 2024-07-20 {:02}:{:02}",
+                                    operation,
+                                    14 + i % 8,
+                                    i * 3 % 60
+                                ));
                             });
                         });
                     }
@@ -250,7 +270,10 @@ pub fn show_tab_content(ui: &mut Ui, tab: &DemoTab) {
 
             // Use per-tab settings state stored in egui memory
             let settings_id = egui::Id::new(&tab.unique_id).with("settings_state");
-            let mut settings = ui.data_mut(|d| d.get_persisted_mut_or_default::<AppSettings>(settings_id).clone());
+            let mut settings = ui.data_mut(|d| {
+                d.get_persisted_mut_or_default::<AppSettings>(settings_id)
+                    .clone()
+            });
 
             ui.push_id((&tab.unique_id, "interface_group"), |ui| {
                 ui.group(|ui| {
@@ -305,12 +328,32 @@ pub fn show_tab_content(ui: &mut Ui, tab: &DemoTab) {
             egui::CollapsingHeader::new("当前设置状态")
                 .id_salt(status_header_id)
                 .show(ui, |ui| {
-                    ui.label(format!("动画: {}", if settings.enable_animations { "已启用" } else { "已禁用" }));
-                    ui.label(format!("主题: {}", if settings.dark_theme { "深色" } else { "浅色" }));
+                    ui.label(format!(
+                        "动画: {}",
+                        if settings.enable_animations {
+                            "已启用"
+                        } else {
+                            "已禁用"
+                        }
+                    ));
+                    ui.label(format!(
+                        "主题: {}",
+                        if settings.dark_theme {
+                            "深色"
+                        } else {
+                            "浅色"
+                        }
+                    ));
                     ui.label(format!("字体大小: {}", settings.font_size));
-                    ui.label(format!("自动保存: {} ({}秒)",
-                        if settings.auto_save { "已启用" } else { "已禁用" },
-                        settings.auto_save_interval));
+                    ui.label(format!(
+                        "自动保存: {} ({}秒)",
+                        if settings.auto_save {
+                            "已启用"
+                        } else {
+                            "已禁用"
+                        },
+                        settings.auto_save_interval
+                    ));
                 });
 
             // Save updated settings
@@ -341,7 +384,7 @@ fn main() -> Result<(), eframe::Error> {
 /// 设置中文字体支持 - 在 re_ui 样式基础上添加中文字体
 pub fn setup_chinese_fonts_robust(ctx: &egui::Context) {
     let mut font_definitions = egui::FontDefinitions::default();
-    
+
     // 添加中文字体 - 使用系统字体或嵌入字体
     #[cfg(target_os = "windows")]
     {
@@ -353,7 +396,7 @@ pub fn setup_chinese_fonts_robust(ctx: &egui::Context) {
             );
         }
     }
-    
+
     #[cfg(target_os = "macos")]
     {
         // macOS 系统字体
@@ -364,13 +407,13 @@ pub fn setup_chinese_fonts_robust(ctx: &egui::Context) {
             );
         }
     }
-    
+
     // 嵌入的备用中文字体
     // font_definitions.font_data.insert(
     //     "NotoSansCJK".into(),
     //     egui::FontData::from_static(include_bytes!("../fonts/NotoSansCJK-Regular.ttf")),
     // );
-    
+
     // 设置字体优先级
     let font_list = vec![
         #[cfg(target_os = "windows")]
@@ -378,20 +421,18 @@ pub fn setup_chinese_fonts_robust(ctx: &egui::Context) {
         #[cfg(target_os = "macos")]
         "PingFang SC".to_owned(),
     ];
-    
-    font_definitions.families.insert(
-        egui::FontFamily::Proportional,
-        font_list.clone(),
-    );
-    font_definitions.families.insert(
-        egui::FontFamily::Monospace,
-        font_list,
-    );
+
+    font_definitions
+        .families
+        .insert(egui::FontFamily::Proportional, font_list.clone());
+    font_definitions
+        .families
+        .insert(egui::FontFamily::Monospace, font_list);
 
     egui_phosphor::add_to_fonts(&mut font_definitions, egui_phosphor::Variant::Regular);
-    
+
     ctx.set_fonts(font_definitions);
-    
+
     // 强制重新布局
     ctx.request_repaint();
 }
@@ -435,61 +476,64 @@ impl Default for DemoTabsApp {
     fn default() -> Self {
         // 创建主 dock 状态，包含所有类型的标签页
         let mut dock_state = DockState::new(vec![DemoTab::new(PanelId::Main, TabContent::Files)]);
-        dock_state.main_surface_mut().push_to_focused_leaf(DemoTab::new(PanelId::Main, TabContent::Search));
-        dock_state.main_surface_mut().push_to_focused_leaf(DemoTab::new(PanelId::Main, TabContent::Diagnostics));
+        dock_state
+            .main_surface_mut()
+            .push_to_focused_leaf(DemoTab::new(PanelId::Main, TabContent::Search));
+        dock_state
+            .main_surface_mut()
+            .push_to_focused_leaf(DemoTab::new(PanelId::Main, TabContent::Diagnostics));
 
         // 创建左侧面板
         let mut left_dock = DockState::new(vec![DemoTab::new(PanelId::Left, TabContent::Files)]);
-        left_dock.main_surface_mut().push_to_focused_leaf(DemoTab::new(PanelId::Left, TabContent::Search));
-        let left_panel = CollapsibleDockPanel::new(
-            PanelSide::Left,
-            egui::Id::new("collapsible_left_panel"),
-        )
-        .with_dock_state(left_dock)
-        .add_button(
-            CollapsibleButton::new("文件")
-                .with_icon("📁")
-                .with_tooltip("浏览文件"),
-        )
-        .add_button(
-            CollapsibleButton::new("搜索")
-                .with_icon("🔍")
-                .with_tooltip("搜索文件和内容"),
-        );
+        left_dock
+            .main_surface_mut()
+            .push_to_focused_leaf(DemoTab::new(PanelId::Left, TabContent::Search));
+        let left_panel =
+            CollapsibleDockPanel::new(PanelSide::Left, egui::Id::new("collapsible_left_panel"))
+                .with_dock_state(left_dock)
+                .add_button(
+                    CollapsibleButton::new("文件")
+                        .with_icon("📁")
+                        .with_tooltip("浏览文件"),
+                )
+                .add_button(
+                    CollapsibleButton::new("搜索")
+                        .with_icon("🔍")
+                        .with_tooltip("搜索文件和内容"),
+                );
 
         // 创建右侧面板
-        let mut right_dock = DockState::new(vec![DemoTab::new(PanelId::Right, TabContent::Diagnostics)]);
-        right_dock.main_surface_mut().push_to_focused_leaf(DemoTab::new(PanelId::Right, TabContent::History));
-        let right_panel = CollapsibleDockPanel::new(
-            PanelSide::Right,
-            egui::Id::new("collapsible_right_panel"),
-        )
-        .with_dock_state(right_dock)
-        .with_min_size(280.0)
-        .add_button(
-            CollapsibleButton::new("诊断")
-                .with_icon("⚠️")
-                .with_tooltip("查看诊断和错误"),
-        )
-        .add_button(
-            CollapsibleButton::new("历史")
-                .with_icon("📜")
-                .with_tooltip("查看命令历史"),
-        );
+        let mut right_dock =
+            DockState::new(vec![DemoTab::new(PanelId::Right, TabContent::Diagnostics)]);
+        right_dock
+            .main_surface_mut()
+            .push_to_focused_leaf(DemoTab::new(PanelId::Right, TabContent::History));
+        let right_panel =
+            CollapsibleDockPanel::new(PanelSide::Right, egui::Id::new("collapsible_right_panel"))
+                .with_dock_state(right_dock)
+                .with_min_size(280.0)
+                .add_button(
+                    CollapsibleButton::new("诊断")
+                        .with_icon("⚠️")
+                        .with_tooltip("查看诊断和错误"),
+                )
+                .add_button(
+                    CollapsibleButton::new("历史")
+                        .with_icon("📜")
+                        .with_tooltip("查看命令历史"),
+                );
 
         // 创建底部面板
         let bottom_dock = DockState::new(vec![DemoTab::new(PanelId::Bottom, TabContent::Settings)]);
-        let bottom_panel = CollapsibleDockPanel::new(
-            PanelSide::Bottom,
-            egui::Id::new("collapsible_bottom_panel"),
-        )
-        .with_dock_state(bottom_dock)
-        .with_min_size(200.0)
-        .add_button(
-            CollapsibleButton::new("设置")
-                .with_icon("⚙️")
-                .with_tooltip("应用程序设置"),
-        );
+        let bottom_panel =
+            CollapsibleDockPanel::new(PanelSide::Bottom, egui::Id::new("collapsible_bottom_panel"))
+                .with_dock_state(bottom_dock)
+                .with_min_size(200.0)
+                .add_button(
+                    CollapsibleButton::new("设置")
+                        .with_icon("⚙️")
+                        .with_tooltip("应用程序设置"),
+                );
 
         Self {
             dock_state,
@@ -515,57 +559,84 @@ impl eframe::App for DemoTabsApp {
         }
 
         // 顶部菜单栏
-        egui::TopBottomPanel::top("top_panel")
-            .show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    ui.menu_button("📋 视图", |ui| {
-                        let left_text = if self.left_panel.is_collapsed() { "▶ 展开左侧面板" } else { "◀ 折叠左侧面板" };
-                        if ui.button(left_text).clicked() {
-                            self.left_panel.toggle();
-                            ui.close();
-                        }
+        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.menu_button("📋 视图", |ui| {
+                    let left_text = if self.left_panel.is_collapsed() {
+                        "▶ 展开左侧面板"
+                    } else {
+                        "◀ 折叠左侧面板"
+                    };
+                    if ui.button(left_text).clicked() {
+                        self.left_panel.toggle();
+                        ui.close();
+                    }
 
-                        let right_text = if self.right_panel.is_collapsed() { "◀ 展开右侧面板" } else { "▶ 折叠右侧面板" };
-                        if ui.button(right_text).clicked() {
-                            self.right_panel.toggle();
-                            ui.close();
-                        }
+                    let right_text = if self.right_panel.is_collapsed() {
+                        "◀ 展开右侧面板"
+                    } else {
+                        "▶ 折叠右侧面板"
+                    };
+                    if ui.button(right_text).clicked() {
+                        self.right_panel.toggle();
+                        ui.close();
+                    }
 
-                        let bottom_text = if self.bottom_panel.is_collapsed() { "▲ 展开底部面板" } else { "▼ 折叠底部面板" };
-                        if ui.button(bottom_text).clicked() {
-                            self.bottom_panel.toggle();
-                            ui.close();
-                        }
-
-                        ui.separator();
-                        if ui.button("📤 全部折叠").clicked() {
-                            self.left_panel.set_collapsed(true);
-                            self.right_panel.set_collapsed(true);
-                            self.bottom_panel.set_collapsed(true);
-                            ui.close();
-                        }
-                        if ui.button("📥 全部展开").clicked() {
-                            self.left_panel.set_collapsed(false);
-                            self.right_panel.set_collapsed(false);
-                            self.bottom_panel.set_collapsed(false);
-                            ui.close();
-                        }
-                    });
+                    let bottom_text = if self.bottom_panel.is_collapsed() {
+                        "▲ 展开底部面板"
+                    } else {
+                        "▼ 折叠底部面板"
+                    };
+                    if ui.button(bottom_text).clicked() {
+                        self.bottom_panel.toggle();
+                        ui.close();
+                    }
 
                     ui.separator();
-                    ui.strong("🏷️ 标签页演示 - 可折叠停靠面板");
+                    if ui.button("📤 全部折叠").clicked() {
+                        self.left_panel.set_collapsed(true);
+                        self.right_panel.set_collapsed(true);
+                        self.bottom_panel.set_collapsed(true);
+                        ui.close();
+                    }
+                    if ui.button("📥 全部展开").clicked() {
+                        self.left_panel.set_collapsed(false);
+                        self.right_panel.set_collapsed(false);
+                        self.bottom_panel.set_collapsed(false);
+                        ui.close();
+                    }
+                });
 
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        ui.colored_label(egui::Color32::from_rgb(120, 200, 120), format!("帧率: {:.1}", ctx.input(|i| 1.0 / i.stable_dt)));
-                        ui.separator();
-                        ui.label(format!("面板: 左:{} 右:{} 下:{}",
-                            if self.left_panel.is_collapsed() { "❌" } else { "✅" },
-                            if self.right_panel.is_collapsed() { "❌" } else { "✅" },
-                            if self.bottom_panel.is_collapsed() { "❌" } else { "✅" }
-                        ));
-                    });
+                ui.separator();
+                ui.strong("🏷️ 标签页演示 - 可折叠停靠面板");
+
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.colored_label(
+                        egui::Color32::from_rgb(120, 200, 120),
+                        format!("帧率: {:.1}", ctx.input(|i| 1.0 / i.stable_dt)),
+                    );
+                    ui.separator();
+                    ui.label(format!(
+                        "面板: 左:{} 右:{} 下:{}",
+                        if self.left_panel.is_collapsed() {
+                            "❌"
+                        } else {
+                            "✅"
+                        },
+                        if self.right_panel.is_collapsed() {
+                            "❌"
+                        } else {
+                            "✅"
+                        },
+                        if self.bottom_panel.is_collapsed() {
+                            "❌"
+                        } else {
+                            "✅"
+                        }
+                    ));
                 });
             });
+        });
 
         // 键盘快捷键处理
         ctx.input(|i| {
@@ -586,39 +657,36 @@ impl eframe::App for DemoTabsApp {
         self.bottom_panel.show(ctx, &mut DemoTabViewer);
 
         // 中央面板
-        egui::CentralPanel::default()
-            .show(ctx, |ui| {
-                ui.heading("🏷️ Demo Tabs - 标签页内容演示");
-                ui.separator();
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.heading("🏷️ Demo Tabs - 标签页内容演示");
+            ui.separator();
 
-                ui.label("这个演示展示了各种标签页内容类型：");
-                ui.label("• 📁 文件 - 文件浏览器");
-                ui.label("• 🔍 搜索 - 搜索功能");
-                ui.label("• ⚠️ 诊断 - 诊断信息");
-                ui.label("• 📜 历史 - 操作历史");
-                ui.label("• ⚙️ 设置 - 应用设置");
+            ui.label("这个演示展示了各种标签页内容类型：");
+            ui.label("• 📁 文件 - 文件浏览器");
+            ui.label("• 🔍 搜索 - 搜索功能");
+            ui.label("• ⚠️ 诊断 - 诊断信息");
+            ui.label("• 📜 历史 - 操作历史");
+            ui.label("• ⚙️ 设置 - 应用设置");
 
-                ui.add_space(20.0);
+            ui.add_space(20.0);
 
-                ui.group(|ui| {
-                    ui.strong("键盘快捷键:");
-                    ui.label("• F1: 切换左侧面板");
-                    ui.label("• F2: 切换右侧面板");
-                    ui.label("• F3: 切换底部面板");
-                });
-
-                ui.add_space(20.0);
-
-                // 显示主 dock 区域
-                ui.push_id("main_dock_area", |ui| {
-                    DockArea::new(&mut self.dock_state)
-                        .id(egui::Id::new("main_dock_area_unique"))
-                        .style(Style::from_egui(ctx.style().as_ref()))
-                        .show_leaf_collapse_buttons(false)  // 直接禁用 collapse 按钮
-                        .show_inside(ui, &mut DemoTabViewer);
-                });
+            ui.group(|ui| {
+                ui.strong("键盘快捷键:");
+                ui.label("• F1: 切换左侧面板");
+                ui.label("• F2: 切换右侧面板");
+                ui.label("• F3: 切换底部面板");
             });
+
+            ui.add_space(20.0);
+
+            // 显示主 dock 区域
+            ui.push_id("main_dock_area", |ui| {
+                DockArea::new(&mut self.dock_state)
+                    .id(egui::Id::new("main_dock_area_unique"))
+                    .style(Style::from_egui(ctx.style().as_ref()))
+                    .show_leaf_collapse_buttons(false) // 直接禁用 collapse 按钮
+                    .show_inside(ui, &mut DemoTabViewer);
+            });
+        });
     }
 }
-
-
