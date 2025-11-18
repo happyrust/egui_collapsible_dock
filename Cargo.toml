@@ -15,7 +15,7 @@ path = "src/lib.rs"
 egui = "0.33.0"
 # egui_dock = "0.17.0"
 egui_dock = { path = "../egui-dock" }
-egui-phosphor = { path = "../egui-phosphor" }
+egui-phosphor = { git = "https://gitee.com/happydpc/egui-phosphor" }
 # egui-phosphor = "0.10.0"
 # wgpu = { version = "25.0.2", features = ["vulkan"] }
 serde = { version = "1.0", features = ["derive"] }
