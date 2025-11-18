@@ -14,7 +14,7 @@ path = "src/lib.rs"
 [dependencies]
 egui = "0.33.0"
 # egui_dock = "0.17.0"
-egui_dock = { path = "../egui-dock" }
+egui_dock = { git = "https://gitee.com/happydpc/egui-dock.git", branch = "review3d-merge-egui-0-33" }
 egui-phosphor = { git = "https://gitee.com/happydpc/egui-phosphor" }
 # egui-phosphor = "0.10.0"
 # wgpu = { version = "25.0.2", features = ["vulkan"] }
